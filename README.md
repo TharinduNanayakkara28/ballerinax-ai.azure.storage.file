@@ -13,11 +13,13 @@ reference, and [`doc/`](doc/) for the per-phase implementation records.
 
 ## Status
 
-**Phase 0 (scaffold) complete.** The repository builds an empty-logic package skeleton: the
-Gradle multi-project wiring, the native Apache Tika text extractor, and the Tika/PDFBox
-platform-dependency block are all in place. The acquisition and loader logic (text layer,
-types, client, tree-walk loader) arrive in Phases 1–4. Overall design:
-[`azure-file-data-loader-plan.md`](azure-file-data-loader-plan.md).
+**All phases (0–5) complete.** Scaffold, text-extraction layer, types, connector client, and
+the `Share → Directory → File` tree-walk loader are implemented; the text layer and all pure
+loader logic are unit-tested (`bal test`, 54 cases). The connector-backed `load()`
+orchestration is exercised by the [`live-test/`](live-test/) sample rather than unit tests
+(see [`doc/phase-4-loader.md`](doc/phase-4-loader.md) §5). Overall design:
+[`azure-file-data-loader-plan.md`](azure-file-data-loader-plan.md); per-phase implementation
+records are in [`doc/`](doc/).
 
 ## Building
 

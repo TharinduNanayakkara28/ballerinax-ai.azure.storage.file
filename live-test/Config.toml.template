@@ -1,0 +1,7 @@
+# Copy this file to Config.toml and fill in your Azure Storage account details.
+# Config.toml is git-ignored, so your credentials are never committed.
+
+accountName    = "<your-storage-account-name>"
+accessKeyOrSAS  = "<your-account-access-key-or-SAS-token>"
+authMethod     = "ACCESS_KEY"   # "ACCESS_KEY" or "SAS"
+share          = "documents"    # the Azure Files share to load, or "*" for every share
