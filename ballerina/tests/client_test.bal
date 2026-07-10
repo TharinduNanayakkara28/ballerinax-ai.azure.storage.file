@@ -14,87 +14,28 @@
 // specific language governing permissions and limitations
 // under the License.
 
-import ballerina/http;
 import ballerina/test;
 import ballerinax/azure_storage_service.files;
-
-// ---- AuthorizationMethod mapping --------------------------------------------
-
-@test:Config {}
-isolated function testAuthMethodMapping() {
-    test:assertEquals(toConnectorAuthMethod(ACCESS_KEY), files:ACCESS_KEY);
-    test:assertEquals(toConnectorAuthMethod(SAS), files:SAS);
-}
-
-// ---- toConnectorConfig forwarding -------------------------------------------
-
-@test:Config {}
-isolated function testToConnectorConfigForwardsIdentityAndAuth() {
-    ConnectionConfig config = {
-        accountName: "contosostorage",
-        accessKeyOrSAS: "sv=2022-11-02&sig=abc",
-        authorizationMethod: SAS
-    };
-    files:ConnectionConfig mapped = toConnectorConfig(config);
-    test:assertEquals(mapped.accountName, "contosostorage");
-    test:assertEquals(mapped.accessKeyOrSAS, "sv=2022-11-02&sig=abc");
-    test:assertEquals(mapped.authorizationMethod, files:SAS);
-    test:assertEquals(mapped.httpVersion, http:HTTP_1_1);
-    test:assertEquals(mapped.timeout, <decimal>30);
-}
-
-@test:Config {}
-isolated function testToConnectorConfigForwardsOptionalHttpOptions() {
-    ConnectionConfig config = {
-        accountName: "acct",
-        accessKeyOrSAS: "key",
-        authorizationMethod: ACCESS_KEY,
-        timeout: 45,
-        retryConfig: {count: 3, interval: 1},
-        proxy: {host: "proxy.example", port: 8080},
-        secureSocket: {enable: false}
-    };
-    files:ConnectionConfig mapped = toConnectorConfig(config);
-    test:assertEquals(mapped.authorizationMethod, files:ACCESS_KEY);
-    test:assertEquals(mapped.timeout, <decimal>45);
-    test:assertEquals(mapped.retryConfig?.count, 3);
-    test:assertEquals(mapped.proxy?.host, "proxy.example");
-    test:assertEquals(mapped.proxy?.port, 8080);
-    test:assertTrue(mapped.secureSocket is http:ClientSecureSocket);
-}
-
-@test:Config {}
-isolated function testToConnectorConfigOmitsUnsetOptionalOptions() {
-    ConnectionConfig config = {
-        accountName: "acct",
-        accessKeyOrSAS: "key",
-        authorizationMethod: ACCESS_KEY
-    };
-    files:ConnectionConfig mapped = toConnectorConfig(config);
-    test:assertTrue(mapped.retryConfig is (), "An unset retryConfig is not forwarded");
-    test:assertTrue(mapped.proxy is (), "An unset proxy is not forwarded");
-    test:assertTrue(mapped.circuitBreaker is (), "An unset circuitBreaker is not forwarded");
-}
 
 // ---- newFileClient construction (no network call at init) -------------------
 
 @test:Config {}
 isolated function testNewFileClientWithSas() returns error? {
-    ConnectionConfig config = {
+    files:ConnectionConfig config = {
         accountName: "contosostorage",
         accessKeyOrSAS: "sv=2022-11-02&ss=f&srt=co&sp=rl&sig=abc",
-        authorizationMethod: SAS
+        authorizationMethod: files:SAS
     };
     files:FileClient _ = check newFileClient(config);
 }
 
 @test:Config {}
 isolated function testNewFileClientWithAccessKey() returns error? {
-    ConnectionConfig config = {
+    files:ConnectionConfig config = {
         accountName: "contosostorage",
         // A syntactically valid base64 access key; no network call is made at construction.
         accessKeyOrSAS: "dGhpcy1pcy1hLWZha2Uta2V5LWZvci10ZXN0aW5n",
-        authorizationMethod: ACCESS_KEY
+        authorizationMethod: files:ACCESS_KEY
     };
     files:FileClient _ = check newFileClient(config);
 }
@@ -103,10 +44,10 @@ isolated function testNewFileClientWithAccessKey() returns error? {
 
 @test:Config {}
 isolated function testNewManagementClientWithSas() returns error? {
-    ConnectionConfig config = {
+    files:ConnectionConfig config = {
         accountName: "contosostorage",
         accessKeyOrSAS: "sv=2022-11-02&ss=f&srt=s&sp=l&sig=abc",
-        authorizationMethod: SAS
+        authorizationMethod: files:SAS
     };
     files:ManagementClient _ = check newManagementClient(config);
 }

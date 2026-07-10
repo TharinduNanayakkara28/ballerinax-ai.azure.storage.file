@@ -14,7 +14,6 @@
 // specific language governing permissions and limitations
 // under the License.
 
-import ballerina/http;
 import ballerina/test;
 
 // ---- Source defaults ---------------------------------------------------------
@@ -46,31 +45,6 @@ isolated function testSourceWildcardShare() {
     Source src = {share: "*"};
     test:assertEquals(src.share, "*", "'*' selects every share in the account");
     test:assertEquals(src.paths, ["/"], "wildcard share still defaults to the whole tree");
-}
-
-// ---- ConnectionConfig defaults ----------------------------------------------
-
-@test:Config {}
-isolated function testConnectionConfigDefaults() {
-    ConnectionConfig config = {
-        accountName: "acct",
-        accessKeyOrSAS: "token",
-        authorizationMethod: SAS
-    };
-    test:assertEquals(config.httpVersion, http:HTTP_1_1, "httpVersion defaults to HTTP/1.1 (matches the connector)");
-    test:assertEquals(config.timeout, <decimal>30);
-    test:assertEquals(config.forwarded, "disable");
-    test:assertEquals(config.compression, http:COMPRESSION_AUTO);
-    test:assertTrue(config.validation);
-}
-
-@test:Config {}
-isolated function testAuthorizationMethodValues() {
-    AuthorizationMethod key = ACCESS_KEY;
-    AuthorizationMethod sas = SAS;
-    test:assertEquals(key, ACCESS_KEY);
-    test:assertEquals(sas, SAS);
-    test:assertNotEquals(key, sas);
 }
 
 // ---- FileEntry shape ---------------------------------------------------------

@@ -165,17 +165,17 @@ isolated function testIsEmptyListingRejectsOtherErrors() {
 
 @test:Config {}
 isolated function testInitRejectsEmptySources() {
-    ConnectionConfig config = {accountName: "acct", accessKeyOrSAS: "token", authorizationMethod: SAS};
+    files:ConnectionConfig config = {accountName: "acct", accessKeyOrSAS: "token", authorizationMethod: files:SAS};
     TextDataLoader|error loader = new (config, []);
     test:assertTrue(loader is error, "at least one source is required");
 }
 
 @test:Config {}
 isolated function testInitConstructsForNamedShare() returns error? {
-    ConnectionConfig config = {
+    files:ConnectionConfig config = {
         accountName: "contosostorage",
         accessKeyOrSAS: "sv=2022-11-02&ss=f&srt=co&sp=rl&sig=abc",
-        authorizationMethod: SAS
+        authorizationMethod: files:SAS
     };
     TextDataLoader _ = check new (config, [{share: "documents", paths: ["/reports"], recursive: true}]);
 }
@@ -183,10 +183,10 @@ isolated function testInitConstructsForNamedShare() returns error? {
 @test:Config {}
 isolated function testInitConstructsForWildcardShare() returns error? {
     // A `"*"` source also builds the management client (share enumeration); still offline at init.
-    ConnectionConfig config = {
+    files:ConnectionConfig config = {
         accountName: "contosostorage",
         accessKeyOrSAS: "dGhpcy1pcy1hLWZha2Uta2V5LWZvci10ZXN0aW5n",
-        authorizationMethod: ACCESS_KEY
+        authorizationMethod: files:ACCESS_KEY
     };
     TextDataLoader _ = check new (config, [{share: "*"}]);
 }
