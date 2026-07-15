@@ -90,10 +90,12 @@ cp tests/Config.toml.template tests/Config.toml
 bal test --groups integration
 ```
 
-To eyeball every loaded document (name, mime, size, full extracted text):
+To eyeball every loaded document (name, mime, size, full extracted text), either
+uncomment `printContent = true` in `tests/Config.toml`, or pass it on the CLI (note:
+no `--` separator — this `bal` version treats `--` as a package path):
 
 ```sh
-bal test --groups integration -- -CprintContent=true
+bal test --groups integration -CprintContent=true
 ```
 
 ## What is covered

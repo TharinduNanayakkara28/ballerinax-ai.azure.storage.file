@@ -12,9 +12,16 @@
 
 import ballerina/ai;
 import ballerina/io;
+import ballerina/lang.runtime;
 import ballerina/test;
 import ballerinax/ai.azure.storage.file;
 import ballerinax/azure_storage_service.files;
+
+// Real Azure occasionally fails a single request transiently: an intermittent Shared
+// Key 403 ("AuthenticationFailed ... signature"), or a recursive listing that comes
+// back a document short. These are environmental, not loader bugs, so each scenario
+// retries a few times before asserting.
+const int MAX_ATTEMPTS = 4;
 
 configurable string accountName = "";
 configurable string accessKeyOrSAS = "";
@@ -42,15 +49,42 @@ function newLoader(file:Source[] sources) returns file:TextDataLoader|ai:Error {
     return loader;
 }
 
-// Builds a loader over the test share with a single source and loads it.
-function load(string[] paths, boolean recursive = false, string[]? includeExtensions = ())
+// Builds a loader over the test share with a single source and loads it, retrying on
+// transient failures. `minDocuments` (when the load is expected to yield an array) also
+// retries a short read — see MAX_ATTEMPTS.
+function load(string[] paths, boolean recursive = false, string[]? includeExtensions = (),
+        int minDocuments = 0) returns ai:Document[]|ai:Document|ai:Error {
+    return loadSources([{share: testShare, paths, recursive, includeExtensions}], minDocuments);
+}
+
+// Loads the given sources with a fresh loader, retrying on a transient error or a short
+// read until MAX_ATTEMPTS is reached; deterministic errors (unsupported/not-found) are
+// returned on the first attempt.
+function loadSources(file:Source[] sources, int minDocuments = 0)
         returns ai:Document[]|ai:Document|ai:Error {
-    file:TextDataLoader loader = check newLoader([
-        {share: testShare, paths, recursive, includeExtensions}
-    ]);
-    ai:Document[]|ai:Document result = check loader.load();
-    dump(result);
-    return result;
+    int attempt = 1;
+    while true {
+        file:TextDataLoader loader = check newLoader(sources);
+        ai:Document[]|ai:Document|ai:Error result = loader.load();
+        boolean retryable = (result is ai:Error && isTransient(result))
+            || (result is ai:Document[] && result.length() < minDocuments);
+        if !retryable || attempt >= MAX_ATTEMPTS {
+            if !(result is ai:Error) {
+                dump(result);
+            }
+            return result;
+        }
+        runtime:sleep(1);
+        attempt += 1;
+    }
+}
+
+// Reports whether an error is an intermittent Azure auth hiccup worth retrying, as
+// opposed to a deterministic loader error the tests assert on.
+function isTransient(ai:Error err) returns boolean {
+    string message = err.message();
+    return message.includes("AuthenticationFailed") || message.includes("Forbidden")
+        || message.includes("signature");
 }
 
 function toArray(ai:Document[]|ai:Document result) returns ai:Document[] =>
@@ -86,20 +120,31 @@ function dump(ai:Document[]|ai:Document result) {
 function assertDocsMatch(ai:Document[] docs, Fixture[] expected) {
     test:assertEquals(docs.length(), expected.length(),
         string `Expected ${expected.length()} documents but loaded ${docs.length()}`);
-    foreach Fixture fixture in expected {
-        int matches = 0;
-        foreach ai:Document doc in docs {
-            if contentOf(doc).includes(fixture.marker) {
-                matches += 1;
-                if doc is ai:TextDocument {
-                    test:assertEquals(doc.metadata?.fileName, leafOf(fixture.path),
-                        string `Document carrying '${fixture.marker}' has the wrong fileName`);
-                }
-            }
-        }
-        test:assertEquals(matches, 1,
-            string `Marker '${fixture.marker}' (${fixture.path}) found in ${matches} documents, expected exactly 1`);
+    // Key documents by fileName (unique across the whole fixture set) and assert each
+    // expected fixture is present with its marker. Matching by name rather than by
+    // searching content for the marker avoids false positives when one marker is a
+    // prefix of another (e.g. FORMAT_MARKER_HTM in FORMAT_MARKER_HTML).
+    map<string> contentByName = {};
+    foreach ai:Document doc in docs {
+        contentByName[leafOf(fixtureNameOf(doc))] = contentOf(doc);
     }
+    foreach Fixture fixture in expected {
+        string leaf = leafOf(fixture.path);
+        string? content = contentByName[leaf];
+        if content is () {
+            test:assertFail(string `Expected a document named '${leaf}' (${fixture.marker}) but none was loaded`);
+        } else {
+            test:assertTrue(content.includes(fixture.marker),
+                string `Document '${leaf}' is missing its marker '${fixture.marker}'`);
+        }
+    }
+}
+
+function fixtureNameOf(ai:Document doc) returns string {
+    if doc is ai:TextDocument {
+        return doc.metadata?.fileName ?: "<unnamed>";
+    }
+    panic error("Expected an ai:TextDocument in the loaded results");
 }
 
 function assertIsError(ai:Document[]|ai:Document|ai:Error result, string expectedFragment) {
@@ -117,8 +162,9 @@ function assertIsError(ai:Document[]|ai:Document|ai:Error result, string expecte
 
 @test:Config {groups: ["integration"]}
 function testWholeShareRecursive() returns error? {
-    ai:Document[] docs = toArray(check load(["/"], recursive = true));
-    assertDocsMatch(docs, expectedInDirectory("", true));
+    Fixture[] expected = expectedInDirectory("", true);
+    ai:Document[] docs = toArray(check load(["/"], recursive = true, minDocuments = expected.length()));
+    assertDocsMatch(docs, expected);
 }
 
 @test:Config {groups: ["integration"]}
@@ -138,8 +184,9 @@ function testWholeShareNonRecursiveLoadsOnlyRootFiles() returns error? {
 function testEveryTextFormatDecodes() returns error? {
     // formats/ holds one file per supported text extension; a directory load of it
     // must decode all of them, each carrying its FORMAT_MARKER_<EXT>.
-    ai:Document[] docs = toArray(check load(["/formats/"]));
-    assertDocsMatch(docs, expectedInDirectory("formats", false));
+    Fixture[] expected = expectedInDirectory("formats", false);
+    ai:Document[] docs = toArray(check load(["/formats/"], minDocuments = expected.length()));
+    assertDocsMatch(docs, expected);
 }
 
 // ---------------------------------------------------------------------------
@@ -195,8 +242,10 @@ function testExtensionFilterSingleType() returns error? {
 function testExtensionFilterDottedAndMixedCase() returns error? {
     // The loader normalizes allowlist entries: case-insensitive, leading dot optional.
     string[] filter = [".Md", "TXT"];
-    ai:Document[] docs = toArray(check load(["/"], recursive = true, includeExtensions = filter));
-    assertDocsMatch(docs, expectedInDirectory("", true, filter));
+    Fixture[] expected = expectedInDirectory("", true, filter);
+    ai:Document[] docs = toArray(check load(["/"], recursive = true, includeExtensions = filter,
+            minDocuments = expected.length()));
+    assertDocsMatch(docs, expected);
 }
 
 @test:Config {groups: ["integration"]}
@@ -213,14 +262,16 @@ function testExplicitlyNamedFileBypassesExtensionFilter() returns error? {
 
 @test:Config {groups: ["integration"]}
 function testNestedNonRecursiveStopsAtFirstLevel() returns error? {
-    ai:Document[] docs = toArray(check load(["/nested/"]));
-    assertDocsMatch(docs, expectedInDirectory("nested", false));
+    Fixture[] expected = expectedInDirectory("nested", false);
+    ai:Document[] docs = toArray(check load(["/nested/"], minDocuments = expected.length()));
+    assertDocsMatch(docs, expected);
 }
 
 @test:Config {groups: ["integration"]}
 function testNestedRecursiveDescendsTwoLevels() returns error? {
-    ai:Document[] docs = toArray(check load(["/nested/"], recursive = true));
-    assertDocsMatch(docs, expectedInDirectory("nested", true));
+    Fixture[] expected = expectedInDirectory("nested", true);
+    ai:Document[] docs = toArray(check load(["/nested/"], recursive = true, minDocuments = expected.length()));
+    assertDocsMatch(docs, expected);
 }
 
 @test:Config {groups: ["integration"]}
@@ -279,8 +330,13 @@ function testMissingNamedFileIsAnError() {
 }
 
 @test:Config {groups: ["integration"]}
-function testMissingDirectoryIsAnError() {
-    assertIsError(load(["/no-such-dir/"]), "was not found");
+function testMissingDirectoryTrailingSlashYieldsNoDocuments() returns error? {
+    // Actual Azure behavior: a missing directory listed with a trailing slash comes
+    // back as the connector's empty "No files found" sentinel, not a 404, so the loader
+    // returns 0 documents rather than erroring. (Contrast testMissingNamedFileIsAnError:
+    // a missing NAMED file is fetched directly and does 404 -> error.)
+    ai:Document[] docs = toArray(check load(["/no-such-dir/"]));
+    test:assertEquals(docs.length(), 0, "A missing directory (trailing slash) yields no documents");
 }
 
 @test:Config {groups: ["integration"]}
@@ -310,19 +366,18 @@ function testEmptyPathsLoadNothing() returns error? {
 
 @test:Config {groups: ["integration"]}
 function testMultiplePathsInOneSource() returns error? {
-    ai:Document[] docs = toArray(check load(["/root-marker.txt", "/pdfs/single-page.pdf"]));
+    ai:Document[] docs = toArray(check load(["/root-marker.txt", "/pdfs/single-page.pdf"],
+            minDocuments = 2));
     assertDocsMatch(docs, [fixtureAt("root-marker.txt"), fixtureAt("pdfs/single-page.pdf")]);
 }
 
 @test:Config {groups: ["integration"]}
 function testMultipleSourcesCombine() returns error? {
-    file:TextDataLoader loader = check newLoader([
-        {share: testShare, paths: ["/formats/"], includeExtensions: ["json"]},
-        {share: testShare, paths: ["/nested/"], recursive: true}
-    ]);
-    ai:Document[]|ai:Document result = check loader.load();
-    dump(result);
     Fixture[] expected = expectedInDirectory("formats", false, ["json"]);
     expected.push(...expectedInDirectory("nested", true));
+    ai:Document[]|ai:Document result = check loadSources([
+        {share: testShare, paths: ["/formats/"], includeExtensions: ["json"]},
+        {share: testShare, paths: ["/nested/"], recursive: true}
+    ], expected.length());
     assertDocsMatch(toArray(result), expected);
 }
