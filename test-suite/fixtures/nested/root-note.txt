@@ -1,0 +1,8 @@
+Nested Fixture - Level 0
+========================
+
+This file sits directly inside the "nested" directory. A NON-recursive load of
+/nested must return this document and nothing else; the two deeper notes only
+appear when recursive traversal is on.
+
+NESTED_MARKER_ROOT_NOTE

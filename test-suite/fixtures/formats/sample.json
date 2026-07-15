@@ -1,0 +1,16 @@
+{
+  "fixture": "json",
+  "marker": "FORMAT_MARKER_JSON",
+  "description": "Exercises direct decoding of application/json content by extension.",
+  "nested": {
+    "array": [1, 2, 3, 5, 8, 13],
+    "boolean": true,
+    "null": null,
+    "unicode": "café — naïve — 日本語"
+  },
+  "revenue": {
+    "EMEA": 120000,
+    "APAC": 98000,
+    "AMER": 143500
+  }
+}

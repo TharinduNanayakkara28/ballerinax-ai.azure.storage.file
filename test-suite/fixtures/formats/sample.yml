@@ -1,0 +1,7 @@
+# Short-extension YAML fixture — .yml must classify exactly like .yaml.
+fixture: yml
+marker: FORMAT_MARKER_YML
+pipeline:
+  stages: [load, chunk, embed, index]
+  retries: 2
+  timeout_seconds: 30

@@ -1,0 +1,14 @@
+Plain Text Fixture
+==================
+
+This document exercises the loader's direct byte-to-text decoding path for the
+".txt" extension. Nothing about it should require extraction: the bytes on the
+wire are exactly the characters below.
+
+Marker: FORMAT_MARKER_TXT
+
+Lorem ipsum dolor sit amet, consectetur adipiscing elit. Integer posuere erat a
+ante venenatis dapibus posuere velit aliquet. Cras justo odio, dapibus ac
+facilisis in, egestas eget quam. Vestibulum id ligula porta felis euismod semper.
+
+Numbers survive too: 0123456789. Punctuation: !@#$%^&*()_+-=[]{};:'",.<>/?

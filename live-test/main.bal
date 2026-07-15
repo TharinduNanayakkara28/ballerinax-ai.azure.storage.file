@@ -1,6 +1,7 @@
 import ballerina/ai;
 import ballerina/io;
 import ballerinax/ai.azure.storage.file;
+import ballerinax/azure_storage_service.files;
 
 // These are read from Config.toml (see Config.toml.template).
 configurable string accountName = ?;
@@ -9,7 +10,7 @@ configurable string authMethod = "ACCESS_KEY"; // "ACCESS_KEY" or "SAS"
 configurable string share = ?;
 
 public function main() returns error? {
-    file:AuthorizationMethod method = authMethod == "SAS" ? file:SAS : file:ACCESS_KEY;
+    files:AuthorizationMethod method = authMethod == "SAS" ? files:SAS : files:ACCESS_KEY;
 
     io:println("Connecting to account '", accountName, "', share '", share, "' ...");
 

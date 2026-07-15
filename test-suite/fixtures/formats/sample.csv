@@ -1,0 +1,6 @@
+id,region,revenue,notes
+1,EMEA,120000,"steady growth"
+2,APAC,98000,"new market entry"
+3,AMER,143500,"largest region"
+4,LATAM,40100,"FORMAT_MARKER_CSV"
+5,EMEA,131250,"quoted, comma retained"

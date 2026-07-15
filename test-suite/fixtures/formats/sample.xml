@@ -1,0 +1,18 @@
+<?xml version="1.0" encoding="UTF-8"?>
+<catalog fixture="xml">
+  <marker>FORMAT_MARKER_XML</marker>
+  <description>Exercises direct decoding of XML content by extension.</description>
+  <books>
+    <book id="1">
+      <title>Structured Text for Fun and Profit</title>
+      <author>A. Writer</author>
+      <price currency="USD">29.95</price>
+    </book>
+    <book id="2">
+      <title>Angle Brackets Everywhere</title>
+      <author>B. Author</author>
+      <price currency="USD">19.50</price>
+    </book>
+  </books>
+  <notes><![CDATA[CDATA sections & entities like &amp; survive as raw text.]]></notes>
+</catalog>

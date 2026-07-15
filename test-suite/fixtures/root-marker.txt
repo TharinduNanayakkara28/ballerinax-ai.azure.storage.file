@@ -1,0 +1,11 @@
+Azure Files Loader Integration Fixture - Share Root
+====================================================
+
+This file sits directly at the root of the test share. A NON-recursive load of
+the whole share should return exactly this one document, because every other
+supported fixture lives inside a sub-directory.
+
+ROOT_MARKER_SHARE_ROOT
+
+If you can read this sentence in a loaded document, direct byte-to-text
+decoding of a .txt file at the share root works end to end.

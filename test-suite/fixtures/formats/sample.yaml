@@ -1,0 +1,19 @@
+# YAML fixture — exercises direct decoding of .yaml content by extension.
+fixture: yaml
+marker: FORMAT_MARKER_YAML
+service:
+  name: ingestion-pipeline
+  replicas: 3
+  ports:
+    - 8080
+    - 9090
+  env:
+    LOG_LEVEL: debug
+    REGION: eu-west-1
+features:
+  recursive_listing: true
+  extension_filter: true
+  office_support: false
+notes: |
+  Block scalars keep their
+  line breaks as literal text.

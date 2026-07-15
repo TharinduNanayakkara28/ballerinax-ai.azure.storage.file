@@ -1,0 +1,24 @@
+/* CSS fixture — exercises direct decoding of .css content by extension. */
+/* FORMAT_MARKER_CSS */
+
+:root {
+    --brand: #0a66c2;
+    --radius: 8px;
+}
+
+.document-card {
+    display: flex;
+    gap: 1rem;
+    padding: 1rem;
+    border-radius: var(--radius);
+    border: 1px solid color-mix(in srgb, var(--brand) 30%, transparent);
+}
+
+.document-card h2 {
+    font-size: 1.125rem;
+    margin: 0;
+}
+
+@media (max-width: 640px) {
+    .document-card { flex-direction: column; }
+}

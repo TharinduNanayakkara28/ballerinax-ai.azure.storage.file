@@ -1,0 +1,11 @@
+# Copy this file to Config.toml (IN THIS tests/ DIRECTORY — `bal test` reads it from
+# here, not from the package root) and fill in your Azure Storage details.
+# Config.toml is git-ignored, so your credentials are never committed.
+
+accountName    = "<your-storage-account-name>"
+accessKeyOrSAS = "<your-account-access-key-or-SAS-token>"
+authMethod     = "ACCESS_KEY"          # "ACCESS_KEY" or "SAS"
+testShare      = "loader-it"           # the share holding the uploaded fixtures
+
+# Set to true to print every loaded document (name, mime, size, full text):
+# printContent = true

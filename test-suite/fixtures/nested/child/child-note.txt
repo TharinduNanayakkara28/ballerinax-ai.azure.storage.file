@@ -1,0 +1,9 @@
+Nested Fixture - Level 1 (direct child)
+=======================================
+
+This file lives one directory below "nested", at nested/child. It proves the
+first level of recursive descent, and it is also the target of the ambiguous
+file-or-directory scenario: loading the extensionless path "/nested/child"
+should resolve to THIS directory's listing.
+
+NESTED_MARKER_CHILD_NOTE

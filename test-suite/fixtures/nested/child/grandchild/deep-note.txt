@@ -1,0 +1,8 @@
+Nested Fixture - Level 2 (grandchild)
+=====================================
+
+This file lives two directories below "nested", at nested/child/grandchild.
+It only appears in recursive loads, proving that traversal descends more than
+one level.
+
+NESTED_MARKER_DEEP_NOTE

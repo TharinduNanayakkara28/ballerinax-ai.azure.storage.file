@@ -1,0 +1,11 @@
+Alternate Plain Text Fixture (.text)
+====================================
+
+The loader treats the ".text" extension identically to ".txt": inherently
+textual, decoded straight from its bytes with no extraction step.
+
+Marker: FORMAT_MARKER_TEXT
+
+This paragraph exists to give the file substance beyond the marker line, so a
+partial read or truncation bug would be visible as a failed marker assertion or
+a suspiciously small character count in the printed output.
