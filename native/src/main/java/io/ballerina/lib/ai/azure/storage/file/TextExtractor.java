@@ -21,31 +21,45 @@ import io.ballerina.runtime.api.creators.ErrorCreator;
 import io.ballerina.runtime.api.utils.StringUtils;
 import io.ballerina.runtime.api.values.BArray;
 import io.ballerina.runtime.api.values.BString;
+import org.apache.tika.extractor.EmbeddedDocumentExtractor;
 import org.apache.tika.metadata.Metadata;
 import org.apache.tika.metadata.TikaCoreProperties;
 import org.apache.tika.parser.ParseContext;
 import org.apache.tika.parser.Parser;
+import org.apache.tika.parser.microsoft.OfficeParser;
+import org.apache.tika.parser.microsoft.ooxml.OOXMLParser;
 import org.apache.tika.parser.pdf.PDFParser;
 import org.apache.tika.sax.BodyContentHandler;
+import org.xml.sax.ContentHandler;
 
 import java.io.ByteArrayInputStream;
 import java.io.InputStream;
+import java.util.Locale;
 
 /**
- * Extracts plain text from PDF documents using Apache Tika.
+ * Extracts plain text from documents using Apache Tika.
  *
- * <p>This loader extracts text from PDFs only; Microsoft Office formats are not
- * supported (the caller classifies and skips them), so the Office (POI) stack is not
- * shipped.
+ * <p>Supports PDF documents and Microsoft Office formats (.doc/.docx, .ppt/.pptx,
+ * .xls/.xlsx): the shipped Tika parser modules are {@code tika-parser-pdf-module} (PDFBox)
+ * and {@code tika-parser-microsoft-module} (Apache POI), declared as platform dependencies
+ * in {@code Ballerina.toml}. The caller classifies which files are routed here.
  *
  * <p>Unlike {@code ai:TextDataLoader}, which reads from a file path, this reads straight
  * from the in-memory bytes downloaded from Azure Files via a {@link ByteArrayInputStream},
  * so no temporary file is ever written.
  *
- * <p>A {@link PDFParser} is used directly rather than {@code AutoDetectParser}; the latter
- * runs Tika's container detection, which probes archive formats via {@code commons-compress}
- * and is both unnecessary here (the caller only routes PDFs to this method) and sensitive to
- * the runtime's transitive library versions.
+ * <p>The concrete parser is selected explicitly from the file extension rather than via
+ * {@code AutoDetectParser}. {@code AutoDetectParser} eagerly instantiates every parser
+ * registered on the runtime classpath, and in a full Ballerina runtime one of those
+ * unrelated parsers fails to initialise against the {@code commons-lang3} version bundled
+ * in the runtime. Selecting the exact parser we need ({@link PDFParser}, {@link OOXMLParser},
+ * or {@link OfficeParser}) loads only that parser and sidesteps the issue.
+ *
+ * <p>For the same reason, recursion into <em>embedded</em> objects (thumbnails, OLE objects,
+ * attachments) is disabled via a no-op {@link EmbeddedDocumentExtractor}: Office parsers would
+ * otherwise route embedded content through {@code AutoDetectParser}'s container detection,
+ * which triggers the same {@code commons-lang3} failure. Only the document's own text is
+ * needed here, so skipping embedded objects is both a fix and the desired behavior.
  */
 public final class TextExtractor {
 
@@ -65,16 +79,53 @@ public final class TextExtractor {
     public static Object extractText(BArray content, BString fileName) {
         byte[] bytes = content.getBytes();
         try (InputStream stream = new ByteArrayInputStream(bytes)) {
-            Parser parser = new PDFParser();
+            Parser parser = selectParser(fileName.getValue());
             BodyContentHandler handler = new BodyContentHandler(UNLIMITED_CONTENT_SIZE);
             Metadata metadata = new Metadata();
             metadata.set(TikaCoreProperties.RESOURCE_NAME_KEY, fileName.getValue());
-            parser.parse(stream, handler, metadata, new ParseContext());
+            ParseContext context = new ParseContext();
+            context.set(EmbeddedDocumentExtractor.class, SkipEmbeddedExtractor.INSTANCE);
+            parser.parse(stream, handler, metadata, context);
             return StringUtils.fromString(handler.toString());
         } catch (Exception e) {
             String message = e.getMessage();
             return ErrorCreator.createError(StringUtils.fromString(
                     message != null ? message : e.getClass().getSimpleName()));
+        }
+    }
+
+    /**
+     * Selects the Tika parser for a file from its extension. OOXML (.docx/.xlsx/.pptx) and
+     * legacy OLE2 (.doc/.xls/.ppt) Office formats use POI; everything else this method is
+     * called with is a PDF (the caller only routes PDF/Office here), which uses PDFBox.
+     */
+    private static Parser selectParser(String fileName) {
+        String name = fileName.toLowerCase(Locale.ROOT);
+        if (name.endsWith(".docx") || name.endsWith(".xlsx") || name.endsWith(".pptx")) {
+            return new OOXMLParser();
+        }
+        if (name.endsWith(".doc") || name.endsWith(".xls") || name.endsWith(".ppt")) {
+            return new OfficeParser();
+        }
+        return new PDFParser();
+    }
+
+    /**
+     * An {@link EmbeddedDocumentExtractor} that skips every embedded object, so parsing never
+     * recurses into embedded content (see the class Javadoc for why this matters here).
+     */
+    private static final class SkipEmbeddedExtractor implements EmbeddedDocumentExtractor {
+        static final SkipEmbeddedExtractor INSTANCE = new SkipEmbeddedExtractor();
+
+        @Override
+        public boolean shouldParseEmbedded(Metadata metadata) {
+            return false;
+        }
+
+        @Override
+        public void parseEmbedded(InputStream stream, ContentHandler handler, Metadata metadata,
+                                  boolean outputHtml) {
+            // Intentionally a no-op: embedded objects are not extracted.
         }
     }
 }

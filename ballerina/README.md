@@ -1,6 +1,6 @@
 # Ballerina Azure Files Data Loader
 
-The `ballerinax/ai.azure.storage.file` module provides a `TextDataLoader` that retrieves documents from Azure Files shares and returns them as `ai:TextDocument` values, ready to be chunked, embedded, and indexed by the [Ballerina AI](https://central.ballerina.io/ballerina/ai) module. Inherently textual files are decoded directly, while PDF documents have their text extracted with Apache Tika.
+The `ballerinax/ai.azure.storage.file` module provides a `TextDataLoader` that retrieves documents from Azure Files shares and returns them as `ai:TextDocument` values, ready to be chunked, embedded, and indexed by the [Ballerina AI](https://central.ballerina.io/ballerina/ai) module. Inherently textual files are decoded directly, while PDF and Microsoft Office documents have their text extracted with Apache Tika (PDFBox for PDF, Apache POI for Office).
 
 It implements the `ai:DataLoader` abstraction, so it can be used anywhere an `ai:DataLoader` is expected (for example, in a Retrieval-Augmented Generation ingestion pipeline).
 
@@ -14,11 +14,11 @@ The acquisition layer — authentication, directory/file listing, and download �
 - Walks the real `Share → Directory → File` tree: files and sub-directories are listed separately, so recursion is a genuine tree-walk (no blob-name-prefix simulation).
 - Returns every file as an `ai:TextDocument`, based on its extension:
   - Inherently textual files (e.g. `txt`, `md`, `html`, `json`, `csv`, `xml`) are decoded directly.
-  - `pdf` files have their text extracted with Apache Tika.
+  - `pdf` files have their text extracted with Apache Tika (PDFBox).
+  - Microsoft Office documents (`.doc`, `.docx`, `.ppt`, `.pptx`, `.xls`, `.xlsx`) have their text
+    extracted with Apache Tika (Apache POI).
   - Other files that cannot be represented as text (e.g. images, audio, archives) are skipped with a
     logged warning; explicitly naming such a file as a path is an error.
-  - Microsoft Office documents (`.doc`, `.docx`, `.ppt`, `.pptx`, `.xls`, `.xlsx`) are **not** supported —
-    they are skipped in directory listings and rejected with an error when named explicitly.
 
 ## Authentication
 
@@ -72,7 +72,7 @@ Unlike Azure Blob Storage's flat namespace, an Azure Files share is a real direc
 
 - **A path with a trailing `/`, or the share root (`/`)** is treated as a directory and listed.
 - **A path without a trailing `/`** is first tried as an explicitly named file. If an exact file exists it is loaded directly (and always loaded, regardless of the extension filter). If no such file exists, the path is treated as a directory — unless it looks like a file (has an extension), in which case a missing file is reported as an error to help catch typos.
-- **A deliberately named non-text file** (an image, an Office document, etc.) is an **error**, whereas the same file discovered while listing a directory is skipped with a warning.
+- **A deliberately named non-text file** (an image, an archive, etc.) is an **error**, whereas the same file discovered while listing a directory is skipped with a warning.
 
 `paths` defaults to `["/"]`, so a `Source` with only a `share` loads the whole share; set `paths` to `[]` to load nothing.
 
@@ -121,7 +121,8 @@ Each returned `ai:TextDocument` carries metadata including the file name (`fileN
 
 - **Single-page listings.** The underlying connector (`azure_storage_service` 4.3.4) does not surface the Azure continuation marker (`NextMarker`) for directory, file, or share listings, so each listing returns a single page — Azure's default of up to 5000 entries per directory. Shares or directories with more than 5000 immediate entries are not paged fully. Recursion into sub-directories is unaffected.
 - **No content type from listings.** As noted above, classification is extension-based.
-- **PDF and text only.** Microsoft Office formats are not supported (see the Overview).
+- **Text, PDF, and Office only.** Text is extracted from inherently textual files, PDFs (PDFBox),
+  and Microsoft Office documents (POI). Other binary formats (images, audio, archives) are skipped.
 
 ## Configuration reference
 

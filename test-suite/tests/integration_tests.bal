@@ -314,8 +314,26 @@ function testDocumentMetadata() returns error? {
 // ---------------------------------------------------------------------------
 
 @test:Config {groups: ["integration"]}
-function testNamedOfficeFileIsAnError() {
-    assertIsError(load(["/unsupported/summary.docx"]), "Microsoft Office");
+function testOfficeDirectoryExtractsAllFormats() returns error? {
+    // A directory load of office/ extracts every Office format via Apache POI:
+    // .docx/.xlsx/.pptx (OOXML) and .doc/.xls/.ppt (legacy OLE2), each carrying its marker.
+    Fixture[] expected = expectedInDirectory("office", false);
+    ai:Document[] docs = toArray(check load(["/office/"], minDocuments = expected.length()));
+    assertDocsMatch(docs, expected);
+}
+
+@test:Config {groups: ["integration"]}
+function testNamedOfficeDocxExtracts() returns error? {
+    // A named Office document is extracted via Apache POI, like a PDF.
+    ai:Document[]|ai:Document result = check load(["/office/report.docx"]);
+    assertDocsMatch(toArray(result), [fixtureAt("office/report.docx")]);
+}
+
+@test:Config {groups: ["integration"]}
+function testNamedLegacyOfficeXlsExtracts() returns error? {
+    // The legacy OLE2 format is extracted via POI's OfficeParser.
+    ai:Document[]|ai:Document result = check load(["/office/legacy.xls"]);
+    assertDocsMatch(toArray(result), [fixtureAt("office/legacy.xls")]);
 }
 
 @test:Config {groups: ["integration"]}
@@ -341,8 +359,8 @@ function testMissingDirectoryTrailingSlashYieldsNoDocuments() returns error? {
 
 @test:Config {groups: ["integration"]}
 function testUnsupportedFilesAreSkippedInDirectoryListings() returns error? {
-    // unsupported/ holds only an image and Office documents: listing it must SKIP all
-    // of them (with logged warnings) and produce zero documents — not an error.
+    // unsupported/ holds only a non-text binary (an image): listing it must SKIP it
+    // (with a logged warning) and produce zero documents — not an error.
     ai:Document[] docs = toArray(check load(["/unsupported/"]));
     test:assertEquals(docs.length(), 0, "All files in unsupported/ must be skipped");
 }

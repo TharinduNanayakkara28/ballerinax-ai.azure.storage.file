@@ -124,11 +124,6 @@ public isolated class TextDataLoader {
             ai:TextDocument? document = check buildDocument(content, fileName, (),
                     <decimal>content.length(), (), ());
             if document is () {
-                if isUnsupportedOfficeDocument(fileName, ()) {
-                    return error ai:Error(string `Unsupported file type for path '${rawPath}': text ` +
-                        string `extraction for Microsoft Office documents (.doc, .docx, .ppt, .pptx, ` +
-                        string `.xls, .xlsx) is not supported`);
-                }
                 return error ai:Error(string `Unsupported (non-text) file type for path '${rawPath}'`);
             }
             return [document];
@@ -166,10 +161,6 @@ public isolated class TextDataLoader {
             ai:TextDocument? document = check self.toDocument(share, entry);
             if document is ai:TextDocument {
                 documents.push(document);
-            } else if isUnsupportedOfficeDocument(entry.name, ()) {
-                log:printWarn("Skipping an unsupported Azure Files file: text extraction for Microsoft " +
-                        "Office documents (.doc, .docx, .ppt, .pptx, .xls, .xlsx) is not supported",
-                        fileName = entry.name, directory = directoryPath, share = share);
             } else {
                 log:printWarn("Skipping a non-text Azure Files file",
                         fileName = entry.name, directory = directoryPath, share = share);

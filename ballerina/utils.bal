@@ -22,13 +22,9 @@ import ballerina/time;
 enum DocumentKind {
     // Inherently textual; decoded directly from its bytes.
     PLAIN_TEXT,
-    // A PDF document whose text is extracted via Apache Tika.
+    // A PDF or Microsoft Office document whose text is extracted via Apache Tika
+    // (PDFBox for PDF, Apache POI for Office).
     EXTRACTABLE,
-    // A Microsoft Office document (.doc/.docx/.ppt/.pptx/.xls/.xlsx). This loader
-    // extracts text from PDFs only and does not support Office formats (see the
-    // OFFICE_* lists / classify), so these are skipped in folder loads and rejected
-    // with a clear, format-specific error when named explicitly.
-    UNSUPPORTED_OFFICE,
     // Cannot be represented as text (images, audio, unknown binary); skipped.
     UNSUPPORTED
 }
@@ -91,26 +87,13 @@ isolated function classify(string fileName, string? mimeType) returns DocumentKi
             || TEXT_EXTENSIONS.indexOf(extension) !is () {
         return PLAIN_TEXT;
     }
-    // Microsoft Office documents are recognised so they can be rejected with a clear,
-    // format-specific message: this loader extracts text from PDFs (and natively textual
-    // files) only and does not ship the Apache POI stack, so Office formats are skipped in
-    // folder loads and rejected when named explicitly.
-    if (mime != "" && OFFICE_MIME_TYPES.indexOf(mime) !is ())
-            || OFFICE_EXTENSIONS.indexOf(extension) !is () {
-        return UNSUPPORTED_OFFICE;
-    }
+    // PDF and Microsoft Office documents are extracted via Apache Tika (PDFBox / POI).
     if (mime != "" && EXTRACTABLE_MIME_TYPES.indexOf(mime) !is ())
             || EXTRACTABLE_EXTENSIONS.indexOf(extension) !is () {
         return EXTRACTABLE;
     }
     return UNSUPPORTED;
 }
-
-// Reports whether a file is a Microsoft Office document, which this loader does not
-// support (see `OFFICE_*` lists / `classify`). Such files are skipped in folder loads
-// and rejected with an error when named explicitly.
-isolated function isUnsupportedOfficeDocument(string fileName, string? mimeType) returns boolean =>
-    classify(fileName, mimeType) == UNSUPPORTED_OFFICE;
 
 // Returns the lower-cased file extension (without the dot), or `""` if none.
 isolated function getExtension(string fileName) returns string {
@@ -181,22 +164,10 @@ final readonly & string[] TEXT_EXTENSIONS = [
     "yaml", "yml", "log", "ini", "conf", "properties", "css", "js", "ts"
 ];
 
-// MIME types whose text is extracted via Apache Tika. PDF only — this loader does not
-// support Office formats (see `OFFICE_*`).
+// MIME types whose text is extracted via Apache Tika: PDF (PDFBox) and Microsoft
+// Office documents (POI, via the `tika-parser-microsoft-module`).
 final readonly & string[] EXTRACTABLE_MIME_TYPES = [
-    "application/pdf"
-];
-
-// File extensions whose text is extracted via Apache Tika. PDF only — this loader does
-// not support Office formats (see `OFFICE_*`).
-final readonly & string[] EXTRACTABLE_EXTENSIONS = [
-    "pdf"
-];
-
-// Microsoft Office MIME types. This loader extracts text from PDFs only and does not ship
-// the Apache POI stack, so these formats are recognised solely to skip them (folder loads)
-// or to reject them with a clear, format-specific error (explicitly named paths).
-final readonly & string[] OFFICE_MIME_TYPES = [
+    "application/pdf",
     "application/msword",
     "application/vnd.openxmlformats-officedocument.wordprocessingml.document",
     "application/vnd.ms-powerpoint",
@@ -205,7 +176,7 @@ final readonly & string[] OFFICE_MIME_TYPES = [
     "application/vnd.openxmlformats-officedocument.spreadsheetml.sheet"
 ];
 
-// Microsoft Office file extensions, unsupported by this loader (see above).
-final readonly & string[] OFFICE_EXTENSIONS = [
-    "doc", "docx", "ppt", "pptx", "xls", "xlsx"
+// File extensions whose text is extracted via Apache Tika: PDF and Microsoft Office.
+final readonly & string[] EXTRACTABLE_EXTENSIONS = [
+    "pdf", "doc", "docx", "ppt", "pptx", "xls", "xlsx"
 ];

@@ -59,14 +59,17 @@ isolated function testClassifyExtractablePdf() {
 }
 
 @test:Config {}
-isolated function testClassifyUnsupportedOffice() {
-    test:assertEquals(classify("a.docx", ()), UNSUPPORTED_OFFICE);
-    test:assertEquals(classify("a.pptx", ()), UNSUPPORTED_OFFICE);
-    test:assertEquals(classify("a.xlsx", ()), UNSUPPORTED_OFFICE);
-    test:assertEquals(classify("a.doc", ()), UNSUPPORTED_OFFICE);
+isolated function testClassifyExtractableOffice() {
+    // Microsoft Office documents are extracted via Apache Tika (POI), same as PDFs.
+    test:assertEquals(classify("a.docx", ()), EXTRACTABLE);
+    test:assertEquals(classify("a.pptx", ()), EXTRACTABLE);
+    test:assertEquals(classify("a.xlsx", ()), EXTRACTABLE);
+    test:assertEquals(classify("a.doc", ()), EXTRACTABLE);
+    test:assertEquals(classify("a.ppt", ()), EXTRACTABLE);
+    test:assertEquals(classify("a.xls", ()), EXTRACTABLE);
     test:assertEquals(
         classify("noext", "application/vnd.openxmlformats-officedocument.presentationml.presentation"),
-        UNSUPPORTED_OFFICE);
+        EXTRACTABLE);
 }
 
 @test:Config {}
@@ -75,13 +78,6 @@ isolated function testClassifyUnsupportedBinary() {
     test:assertEquals(classify("clip.mp3", ()), UNSUPPORTED);
     test:assertEquals(classify("noextension", ()), UNSUPPORTED);
     test:assertEquals(classify("blob", "application/octet-stream"), UNSUPPORTED);
-}
-
-@test:Config {}
-isolated function testIsUnsupportedOfficeDocument() {
-    test:assertTrue(isUnsupportedOfficeDocument("slides.pptx", ()));
-    test:assertFalse(isUnsupportedOfficeDocument("doc.pdf", ()));
-    test:assertFalse(isUnsupportedOfficeDocument("a.txt", ()));
 }
 
 // ---- matchesExtensionFilter --------------------------------------------------
@@ -125,6 +121,41 @@ isolated function testToUtcNilForNilOrUnparseable() {
 isolated function testExtractTextFromPdfBytes() returns error? {
     string text = check extractText(PDF_BYTES, "sample.pdf");
     test:assertTrue(text.includes(PDF_TEXT), text);
+}
+
+@test:Config {}
+isolated function testExtractTextFromDocxBytes() returns error? {
+    // The .docx path exercises the POI-backed OOXML parser (tika-parser-microsoft-module).
+    string text = check extractText(DOCX_BYTES, "sample.docx");
+    test:assertTrue(text.includes(DOCX_TEXT), text);
+}
+
+@test:Config {}
+isolated function testExtractTextFromXlsxBytes() returns error? {
+    // .xlsx exercises the OOXML parser for a spreadsheet.
+    string text = check extractText(XLSX_BYTES, "sample.xlsx");
+    test:assertTrue(text.includes(XLSX_TEXT), text);
+}
+
+@test:Config {}
+isolated function testExtractTextFromPptxBytes() returns error? {
+    // .pptx exercises the OOXML parser for a presentation (and the embedded-object skip).
+    string text = check extractText(PPTX_BYTES, "sample.pptx");
+    test:assertTrue(text.includes(PPTX_TEXT), text);
+}
+
+@test:Config {}
+isolated function testExtractTextFromXlsBytes() returns error? {
+    // Legacy .xls exercises the OLE2 OfficeParser for a spreadsheet.
+    string text = check extractText(XLS_BYTES, "sample.xls");
+    test:assertTrue(text.includes(XLS_TEXT), text);
+}
+
+@test:Config {}
+isolated function testExtractTextFromPptBytes() returns error? {
+    // Legacy .ppt exercises the OLE2 OfficeParser for a presentation.
+    string text = check extractText(PPT_BYTES, "sample.ppt");
+    test:assertTrue(text.includes(PPT_TEXT), text);
 }
 
 // ---- buildDocument: plain-text path ------------------------------------------
@@ -200,10 +231,16 @@ isolated function testBuildDocumentUnsupportedBinaryReturnsNil() returns error? 
     test:assertTrue(doc is (), "A non-text binary yields () (skip)");
 }
 
+// ---- buildDocument: Office (extractable) path --------------------------------
+
 @test:Config {}
-isolated function testBuildDocumentUnsupportedOfficeReturnsNil() returns error? {
-    // Office formats are unsupported; buildDocument returns () (the loader turns this into
-    // a skip for folder loads, or a format-specific error for explicitly named paths).
-    ai:TextDocument? doc = check buildDocument("PK".toBytes(), "slides.pptx", (), (), (), ());
-    test:assertTrue(doc is (), "An Office document yields () (skip/handled by caller)");
+isolated function testBuildDocumentDocxExtractsText() returns error? {
+    ai:TextDocument? doc = check buildDocument(DOCX_BYTES, "summary.docx",
+            "application/vnd.openxmlformats-officedocument.wordprocessingml.document", 3518, (), ());
+    if doc is ai:TextDocument {
+        test:assertTrue(doc.content.includes(DOCX_TEXT), doc.content);
+        test:assertEquals(doc.metadata?.fileName, "summary.docx");
+    } else {
+        test:assertFail("A .docx file should extract to a TextDocument");
+    }
 }

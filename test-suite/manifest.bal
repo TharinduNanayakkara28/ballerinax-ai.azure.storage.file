@@ -53,10 +53,17 @@ public final readonly & Fixture[] FIXTURES = [
     {path: "nested/child/child-note.txt", marker: "NESTED_MARKER_CHILD_NOTE", supported: true},
     {path: "nested/child/grandchild/deep-note.txt", marker: "NESTED_MARKER_DEEP_NOTE", supported: true},
 
+    // --- office/: Microsoft Office text extraction via Apache POI --------------
+    // .docx/.xlsx/.pptx exercise the OOXML parser; .doc/.xls/.ppt the legacy OLE2 parser.
+    {path: "office/report.docx", marker: "OFFICE_MARKER_DOCX", supported: true},
+    {path: "office/report.xlsx", marker: "OFFICE_MARKER_XLSX", supported: true},
+    {path: "office/report.pptx", marker: "OFFICE_MARKER_PPTX", supported: true},
+    {path: "office/legacy.doc", marker: "OFFICE_MARKER_DOC", supported: true},
+    {path: "office/legacy.xls", marker: "OFFICE_MARKER_XLS", supported: true},
+    {path: "office/legacy.ppt", marker: "OFFICE_MARKER_PPT", supported: true},
+
     // --- unsupported/: skipped in listings, error when named explicitly --------
-    {path: "unsupported/pixel.png", marker: "", supported: false},
-    {path: "unsupported/summary.docx", marker: "", supported: false},
-    {path: "unsupported/legacy.doc", marker: "", supported: false}
+    {path: "unsupported/pixel.png", marker: "", supported: false}
 ];
 
 # The multi-page PDF's page count (each page carries `Page N of 12.`).

@@ -467,6 +467,7 @@ version = "1.0.0"
 scope = "testOnly"
 dependencies = [
 	{org = "ballerina", name = "ai"},
+	{org = "ballerina", name = "io"},
 	{org = "ballerina", name = "jballerina.java"},
 	{org = "ballerina", name = "log"},
 	{org = "ballerina", name = "time"},
