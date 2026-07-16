@@ -17,6 +17,9 @@ The acquisition layer — authentication, directory/file listing, and download �
   - `pdf` files have their text extracted with Apache Tika (PDFBox).
   - Microsoft Office documents (`.doc`, `.docx`, `.ppt`, `.pptx`, `.xls`, `.xlsx`) have their text
     extracted with Apache Tika (Apache POI).
+  - **Scanned (image-only) PDFs** — PDFs with no extractable text layer — are detected: skipped
+    with a logged warning in directory listings, and reported with a descriptive error when named
+    explicitly. OCR is not supported.
   - Other files that cannot be represented as text (e.g. images, audio, archives) are skipped with a
     logged warning; explicitly naming such a file as a path is an error.
 
@@ -123,6 +126,10 @@ Each returned `ai:TextDocument` carries metadata including the file name (`fileN
 - **No content type from listings.** As noted above, classification is extension-based.
 - **Text, PDF, and Office only.** Text is extracted from inherently textual files, PDFs (PDFBox),
   and Microsoft Office documents (POI). Other binary formats (images, audio, archives) are skipped.
+- **No OCR.** A scanned (image-only) PDF has no text layer to extract; it is skipped with a
+  warning in directory listings and produces a descriptive error when named explicitly. Reading
+  such documents would require OCR (e.g. Tesseract via Tika's OCR module, or Azure AI Document
+  Intelligence), which this loader does not ship.
 
 ## Configuration reference
 

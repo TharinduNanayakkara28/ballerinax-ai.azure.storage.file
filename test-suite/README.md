@@ -57,7 +57,7 @@ files from `fixtures/`. Upload `root-marker.txt` at the share root.
 (*+ Add directory* in the portal — `upload-batch` cannot create it because it holds
 no files). The empty-directory scenario needs it.
 
-Expected final share contents (32 files + 1 empty directory):
+Expected final share contents (33 files + 1 empty directory):
 
 ```
 root-marker.txt
@@ -65,6 +65,7 @@ formats/sample.{txt,text,md,markdown,csv,tsv,json,xml,html,htm,
                 yaml,yml,log,ini,conf,properties,css,js,ts}   (19 files)
 pdfs/single-page.pdf
 pdfs/multi-page.pdf                                           (12 pages)
+pdfs/scanned.pdf                                              (image-only, no text layer)
 nested/root-note.txt
 nested/child/child-note.txt
 nested/child/grandchild/deep-note.txt
@@ -106,6 +107,8 @@ bal test --groups integration -CprintContent=true
   (heading + `Page N of 12.` per page, unique sentinel on the last page).
 - Apache POI Office extraction: all six formats — `.docx`/`.xlsx`/`.pptx` (OOXML) and
   legacy `.doc`/`.xls`/`.ppt` (OLE2) — each asserted to yield a document with its marker.
+- Scanned (image-only) PDF handling: a descriptive error when named explicitly, and a
+  warn-and-skip (not an abort) when discovered in a directory listing.
 - The single-document-vs-array return contract.
 - Extension filters, including dotted and mixed-case entries, and the rule that an
   explicitly named file bypasses the filter.

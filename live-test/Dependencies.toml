@@ -403,6 +403,7 @@ name = "ai.azure.storage.file"
 version = "1.0.0"
 dependencies = [
 	{org = "ballerina", name = "ai"},
+	{org = "ballerina", name = "io"},
 	{org = "ballerina", name = "jballerina.java"},
 	{org = "ballerina", name = "log"},
 	{org = "ballerina", name = "time"},

@@ -2,6 +2,12 @@
 # Config.toml is git-ignored, so your credentials are never committed.
 
 accountName    = "<your-storage-account-name>"
-accessKeyOrSAS  = "<your-account-access-key-or-SAS-token>"
+accessKeyOrSAS = "<your-account-access-key-or-SAS-token>"
 authMethod     = "ACCESS_KEY"   # "ACCESS_KEY" or "SAS"
 share          = "documents"    # the Azure Files share to load, or "*" for every share
+
+# Paths to load: directories and/or explicit files. Examples:
+#   paths = ["/"]                          # whole share (default)
+#   paths = ["/reports/"]                  # one directory
+#   paths = ["/pdfs/scanned_1.pdf"]        # one explicit file (a scanned PDF -> clear error)
+# recursive = true                         # traverse sub-directories (default: true)

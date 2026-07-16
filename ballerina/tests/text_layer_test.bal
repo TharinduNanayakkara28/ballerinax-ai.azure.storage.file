@@ -123,6 +123,38 @@ isolated function testExtractTextFromPdfBytes() returns error? {
     test:assertTrue(text.includes(PDF_TEXT), text);
 }
 
+// ---- scanned (image-only) PDF detection ---------------------------------------
+
+@test:Config {}
+isolated function testExtractTextFromScannedPdfErrors() {
+    // The scanned fixture parses fine but has no text layer; the extractor must surface
+    // a descriptive error rather than silently returning an empty string.
+    string|error text = extractText(SCANNED_PDF_BYTES, "scan.pdf");
+    if text is error {
+        test:assertTrue(text.message().includes(SCANNED_PDF_SENTINEL), text.message());
+    } else {
+        test:assertFail("A scanned (image-only) PDF should surface a descriptive error");
+    }
+}
+
+@test:Config {}
+isolated function testBuildDocumentScannedPdfErrors() {
+    ai:TextDocument?|ai:Error result = buildDocument(SCANNED_PDF_BYTES, "scan.pdf",
+            "application/pdf", (), (), ());
+    if result is ai:Error {
+        test:assertTrue(result.message().includes(SCANNED_PDF_SENTINEL), result.message());
+        test:assertTrue(isScannedPdfError(result), "The error must be recognisable as scanned-PDF");
+    } else {
+        test:assertFail("Building a document from a scanned PDF should error, not skip or succeed");
+    }
+}
+
+@test:Config {}
+isolated function testIsScannedPdfErrorRejectsOtherErrors() {
+    test:assertFalse(isScannedPdfError(error("some unrelated extraction failure")));
+    test:assertFalse(isScannedPdfError(error("Failed to decode text content")));
+}
+
 @test:Config {}
 isolated function testExtractTextFromDocxBytes() returns error? {
     // The .docx path exercises the POI-backed OOXML parser (tika-parser-microsoft-module).

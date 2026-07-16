@@ -158,7 +158,19 @@ public isolated class TextDataLoader {
             if !matchesExtensionFilter(entry.name, includeExtensions) {
                 continue;
             }
-            ai:TextDocument? document = check self.toDocument(share, entry);
+            ai:TextDocument?|ai:Error document = self.toDocument(share, entry);
+            if document is ai:Error {
+                // A scanned (image-only) PDF has no text to extract; inside a listing it is
+                // skipped like other non-text content rather than aborting the whole walk.
+                // (An explicitly named scanned PDF still surfaces this error to the caller.)
+                if isScannedPdfError(document) {
+                    log:printWarn("Skipping a scanned (image-only) PDF: it has no extractable " +
+                            "text layer, and OCR is not supported",
+                            fileName = entry.name, directory = directoryPath, share = share);
+                    continue;
+                }
+                return document;
+            }
             if document is ai:TextDocument {
                 documents.push(document);
             } else {

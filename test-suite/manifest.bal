@@ -47,6 +47,9 @@ public final readonly & Fixture[] FIXTURES = [
     // --- pdfs/: the Tika extraction path ---------------------------------------
     {path: "pdfs/single-page.pdf", marker: "PDF_MARKER_SINGLE_PAGE", supported: true},
     {path: "pdfs/multi-page.pdf", marker: "PDF_MARKER_MULTI_PAGE", supported: true},
+    // An image-only "scanned" PDF: parses but has no text layer, so the loader skips it
+    // in listings (warning) and errors when it is named explicitly. OCR is not supported.
+    {path: "pdfs/scanned.pdf", marker: "", supported: false},
 
     // --- nested/: recursion (direct child + 2-level-deep child) ----------------
     {path: "nested/root-note.txt", marker: "NESTED_MARKER_ROOT_NOTE", supported: true},

@@ -201,6 +201,22 @@ function testSinglePagePdfExtracts() returns error? {
 }
 
 @test:Config {groups: ["integration"]}
+function testNamedScannedPdfIsAnError() {
+    // A scanned (image-only) PDF named explicitly surfaces a descriptive error —
+    // never a silent empty document. OCR is not supported.
+    assertIsError(load(["/pdfs/scanned.pdf"]), "no extractable text layer");
+}
+
+@test:Config {groups: ["integration"]}
+function testScannedPdfIsSkippedInDirectoryListing() returns error? {
+    // pdfs/ holds the two text-layer PDFs plus scanned.pdf: the scan must be skipped
+    // with a warning (not loaded, and not aborting the listing).
+    Fixture[] expected = expectedInDirectory("pdfs", false);
+    ai:Document[] docs = toArray(check load(["/pdfs/"], minDocuments = expected.length()));
+    assertDocsMatch(docs, expected);
+}
+
+@test:Config {groups: ["integration"]}
 function testMultiPagePdfExtractsEveryPage() returns error? {
     ai:Document[]|ai:Document result = check load(["/pdfs/multi-page.pdf"]);
     ai:Document[] docs = toArray(result);

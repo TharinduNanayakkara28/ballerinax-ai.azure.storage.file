@@ -28,6 +28,12 @@ final readonly & byte[] PDF_BYTES = base64 `JVBERi0xLjYKJfbk/N8KMSAwIG9iago8PAov
 // The marker text Tika extracts from the PDF fixture above.
 const string PDF_TEXT = "Mock PDF document text.";
 
+// A valid "scanned-style" PDF: one page holding only an image XObject and NO text
+// operators — structurally what a scanner produces. PDFBox parses it fine but extracts
+// zero text, which the extractor must surface as a descriptive error (never an empty
+// document).
+final readonly & byte[] SCANNED_PDF_BYTES = base64 `JVBERi0xLjQKMSAwIG9iago8PCAvVHlwZSAvQ2F0YWxvZyAvUGFnZXMgMiAwIFIgPj4KZW5kb2JqCjIgMCBvYmoKPDwgL1R5cGUgL1BhZ2VzIC9LaWRzIFszIDAgUl0gL0NvdW50IDEgPj4KZW5kb2JqCjMgMCBvYmoKPDwgL1R5cGUgL1BhZ2UgL1BhcmVudCAyIDAgUiAvTWVkaWFCb3ggWzAgMCA2MTIgNzkyXSAvUmVzb3VyY2VzIDw8IC9YT2JqZWN0IDw8IC9JbTAgNCAwIFIgPj4gPj4gL0NvbnRlbnRzIDUgMCBSID4+CmVuZG9iago0IDAgb2JqCjw8IC9UeXBlIC9YT2JqZWN0IC9TdWJ0eXBlIC9JbWFnZSAvV2lkdGggMiAvSGVpZ2h0IDIgL0NvbG9yU3BhY2UgL0RldmljZVJHQiAvQml0c1BlckNvbXBvbmVudCA4IC9MZW5ndGggMTIgPj4Kc3RyZWFtCsjIyFpaWlpaWsjIyAplbmRzdHJlYW0KZW5kb2JqCjUgMCBvYmoKPDwgL0xlbmd0aCAzNCA+PgpzdHJlYW0KcSA0MDAgMCAwIDUwMCAxMDAgMTUwIGNtIC9JbTAgRG8gUQplbmRzdHJlYW0KZW5kb2JqCnhyZWYKMCA2CjAwMDAwMDAwMDAgNjU1MzUgZiAKMDAwMDAwMDAwOSAwMDAwMCBuIAowMDAwMDAwMDU4IDAwMDAwIG4gCjAwMDAwMDAxMTUgMDAwMDAgbiAKMDAwMDAwMDI0NSAwMDAwMCBuIAowMDAwMDAwNDAwIDAwMDAwIG4gCnRyYWlsZXIKPDwgL1NpemUgNiAvUm9vdCAxIDAgUiA+PgpzdGFydHhyZWYKNDg0CiUlRU9GCg==`;
+
 // Microsoft Office fixtures, read from test resource files (each verified to round-trip
 // through Tika's POI-backed parsers — OOXML for .docx/.xlsx/.pptx, OLE2 for .doc/.xls/.ppt).
 // Kept as files rather than inline base64 literals because they exceed the base64-literal

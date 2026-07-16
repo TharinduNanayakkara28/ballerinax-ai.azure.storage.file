@@ -29,6 +29,7 @@ import org.apache.tika.parser.Parser;
 import org.apache.tika.parser.microsoft.OfficeParser;
 import org.apache.tika.parser.microsoft.ooxml.OOXMLParser;
 import org.apache.tika.parser.pdf.PDFParser;
+import org.apache.tika.parser.pdf.PDFParserConfig;
 import org.apache.tika.sax.BodyContentHandler;
 import org.xml.sax.ContentHandler;
 
@@ -66,6 +67,18 @@ public final class TextExtractor {
     // A BodyContentHandler write limit of -1 means "no limit" on extracted content size.
     private static final int UNLIMITED_CONTENT_SIZE = -1;
 
+    /**
+     * The error message returned for a PDF whose pages carry no text layer (a scanned /
+     * image-only document). PDFBox extracts only the text layer, so such a PDF parses
+     * "successfully" but yields empty text — silently producing an empty document unless
+     * detected here. The Ballerina layer matches this message (see {@code isScannedPdfError}
+     * in {@code utils.bal}) to skip such files in directory listings while surfacing a
+     * descriptive error for explicitly named paths.
+     */
+    static final String SCANNED_PDF_MESSAGE =
+            "the PDF has no extractable text layer (it appears to be a scanned/image-only "
+                    + "document), and OCR is not supported";
+
     private TextExtractor() {
     }
 
@@ -85,8 +98,20 @@ public final class TextExtractor {
             metadata.set(TikaCoreProperties.RESOURCE_NAME_KEY, fileName.getValue());
             ParseContext context = new ParseContext();
             context.set(EmbeddedDocumentExtractor.class, SkipEmbeddedExtractor.INSTANCE);
+            // OCR is not supported (no Tesseract shipped): disable the PDF parser's OCR
+            // fallback explicitly, otherwise it NPEs trying to OCR image-only pages.
+            PDFParserConfig pdfConfig = new PDFParserConfig();
+            pdfConfig.setOcrStrategy(PDFParserConfig.OCR_STRATEGY.NO_OCR);
+            context.set(PDFParserConfig.class, pdfConfig);
             parser.parse(stream, handler, metadata, context);
-            return StringUtils.fromString(handler.toString());
+            String text = handler.toString();
+            // A PDF that parses but yields no text has image-only pages (a scan): PDFBox
+            // reads only the text layer, so surface a descriptive error instead of
+            // silently returning an empty document.
+            if (parser instanceof PDFParser && text.trim().isEmpty()) {
+                return ErrorCreator.createError(StringUtils.fromString(SCANNED_PDF_MESSAGE));
+            }
+            return StringUtils.fromString(text);
         } catch (Exception e) {
             String message = e.getMessage();
             return ErrorCreator.createError(StringUtils.fromString(
