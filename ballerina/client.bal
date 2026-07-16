@@ -44,6 +44,6 @@ isolated function newManagementClient(files:ConnectionConfig config) returns fil
 // The `files` connector maps every HTTP 404 — regardless of the Azure error code
 // (`ShareNotFound`, `ResourceNotFound`, `ParentNotFound`, …) — to a distinct
 // `files:NotFoundError` (an `http:STATUS_NOT_FOUND` `ServerError`), so a single typed check
-// suffices. The loader (Phase 4) uses this to fall back from an explicit-file probe to a
+// suffices. The loader uses this to fall back from an explicit-file probe to a
 // directory listing, and to tolerate missing paths under a `share: "*"` source.
 isolated function isNotFoundError(error err) returns boolean => err is files:NotFoundError;

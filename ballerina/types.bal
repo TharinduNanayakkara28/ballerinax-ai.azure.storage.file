@@ -34,12 +34,11 @@ public type Source record {|
 |};
 
 // A normalized listing entry, decoupled from the connector's `File` record (whose
-// `Properties` are an optional `PropertiesFileItem|EMPTY_STRING`). The loader (Phase 4)
+// `Properties` are an optional `PropertiesFileItem|EMPTY_STRING`). The loader 
 // reads the connector's file metadata into this shape before building an `ai:TextDocument`.
 // Azure Files' file listing (`getFileList`) surfaces the name and `Content-Length` only —
 // no content type and no per-file timestamp — so `contentType` is dropped (classification
-// falls back to the extension) and `lastModified` is present but generally unpopulated
-// (see the plan's open items).
+// falls back to the extension) and `lastModified` is present but generally unpopulated. The `directoryPath` is the path to the file's parent directory, relative to the share root
 
 # A single file discovered while listing a share directory.
 type FileEntry record {|
