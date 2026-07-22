@@ -14,6 +14,7 @@
 // specific language governing permissions and limitations
 // under the License.
 
+import ballerina/ai;
 import ballerina/test;
 import ballerinax/azure_storage_service.files;
 
@@ -189,4 +190,50 @@ isolated function testInitConstructsForWildcardShare() returns error? {
         authorizationMethod: files:ACCESS_KEY
     };
     TextDataLoader _ = check new (config, [{share: "*"}]);
+}
+
+@test:Config {}
+isolated function testInitWithExistingClientSucceeds() returns error? {
+    // An already-constructed client is used as-is, so a caller sharing one client across
+    // several loaders does not open a second connection pool per loader.
+    files:ConnectionConfig config = {accountName: "acct", accessKeyOrSAS: "token", authorizationMethod: files:SAS};
+    files:FileClient fileClient = check new (config);
+    TextDataLoader _ = check new ({fileClient}, [{share: "documents", paths: ["/reports"]}]);
+}
+
+@test:Config {}
+isolated function testInitWithExistingClientStillValidatesSources() returns error? {
+    // The source check runs before the connection is resolved, so it applies to both forms.
+    files:ConnectionConfig config = {accountName: "acct", accessKeyOrSAS: "token", authorizationMethod: files:SAS};
+    files:FileClient fileClient = check new (config);
+    TextDataLoader|ai:Error loader = new ({fileClient}, []);
+    if loader is ai:Error {
+        test:assertTrue(loader.message().includes("At least one source"), loader.message());
+    } else {
+        test:assertFail("Expected an error when no sources are provided");
+    }
+}
+
+@test:Config {}
+isolated function testInitWithExistingClientsSupportsWildcardShare() returns error? {
+    // A `"*"` source needs the management client too; supplying both keeps share
+    // enumeration available to callers that pass their own clients.
+    files:ConnectionConfig config = {accountName: "acct", accessKeyOrSAS: "token", authorizationMethod: files:SAS};
+    files:FileClient fileClient = check new (config);
+    files:ManagementClient managementClient = check new (config);
+    TextDataLoader _ = check new ({fileClient, managementClient}, [{share: "*"}]);
+}
+
+@test:Config {}
+isolated function testInitWithExistingClientRejectsWildcardWithoutManagementClient() returns error? {
+    // Without a management client there is no configuration to build one from, so a `"*"`
+    // source fails fast at init rather than at load time.
+    files:ConnectionConfig config = {accountName: "acct", accessKeyOrSAS: "token", authorizationMethod: files:SAS};
+    files:FileClient fileClient = check new (config);
+    TextDataLoader|ai:Error loader = new ({fileClient}, [{share: "*"}]);
+    if loader is ai:Error {
+        test:assertTrue(loader.message().includes("managementClient"), loader.message());
+    } else {
+        test:assertFail("Expected an error when a '*' source is given without a management client");
+    }
 }

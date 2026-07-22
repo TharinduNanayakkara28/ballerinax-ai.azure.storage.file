@@ -32,16 +32,21 @@ public isolated class TextDataLoader {
 
     # Initializes the Azure Files data loader.
     #
-    # + connectionConfig - The authentication and service configuration shared by all sources
+    # + connection - The authentication and service configuration shared by all sources, or
+    #                existing connector clients (`Clients`) to reuse. Clients supplied this
+    #                way are **not** owned by the loader: the caller remains responsible for
+    #                their lifecycle. A `Clients` value must carry a `managementClient` when
+    #                any source uses `share: "*"`, since enumerating shares requires one and
+    #                the loader has no configuration to build it from.
     # + sources - One or more Azure Files shares to load documents from
     # + return - An `ai:Error` if the loader could not be initialized
-    public isolated function init(@display {label: "Connection Configurations"} files:ConnectionConfig connectionConfig,
+    public isolated function init(
+            @display {label: "Connection"} files:ConnectionConfig|Clients connection,
             @display {label: "Data Sources"} Source[] sources) returns ai:Error? {
         if sources.length() == 0 {
             return error ai:Error("At least one source must be provided to the Azure Files data loader");
         }
         self.sources = sources.cloneReadOnly();
-        self.fileClient = check newFileClient(connectionConfig);
         // The management client is only needed to enumerate shares for a `"*"` source.
         boolean needsManagement = false;
         foreach Source src in sources {
@@ -50,7 +55,24 @@ public isolated class TextDataLoader {
                 break;
             }
         }
-        self.managementClient = needsManagement ? check newManagementClient(connectionConfig) : ();
+        if connection is Clients {
+            // Caller-supplied clients are used as-is and are not owned by the loader.
+            files:ManagementClient? managementClient = connection?.managementClient;
+            if needsManagement && managementClient is () {
+                return error ai:Error("A 'managementClient' must be supplied alongside the 'fileClient' when a " +
+                    "source uses share '*', as enumerating the account's shares requires it");
+            }
+            self.fileClient = connection.fileClient;
+            self.managementClient = managementClient;
+        } else {
+            // `files:ConnectionConfig` includes the open `client.config:ConnectionConfig`, so it
+            // carries an implicit rest field. The compiler cannot then prove it disjoint from
+            // `Clients` and does not narrow this branch, hence the cast — which is safe, as the
+            // union has only these two members and `Clients` was ruled out above.
+            files:ConnectionConfig config = <files:ConnectionConfig>connection;
+            self.fileClient = check newFileClient(config);
+            self.managementClient = needsManagement ? check newManagementClient(config) : ();
+        }
     }
 
     # Loads the configured Azure Files documents.
@@ -88,7 +110,8 @@ public isolated class TextDataLoader {
         }
         files:ManagementClient? managementClient = self.managementClient;
         if managementClient is () {
-            // Unreachable: `init` always builds the management client when a `"*"` source exists.
+            // Unreachable: for a `"*"` source `init` either builds the management client from
+            // the config or requires the caller to have supplied one, failing otherwise.
             return error ai:Error("The management client required for a '*' share was not initialized");
         }
         files:SharesList|files:Error result = managementClient->listShares();

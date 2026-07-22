@@ -14,6 +14,8 @@
 // specific language governing permissions and limitations
 // under the License.
 
+import ballerinax/azure_storage_service.files;
+
 # A rule selecting what to load from one Azure Files share. Several may be configured
 # per loader. A share is the unit of addressing (analogous to a SharePoint library):
 # there is no site/library chain, so a share maps directly to a `Source`. Unlike Azure
@@ -31,6 +33,22 @@ public type Source record {|
     # Case-insensitive extension allowlist for directory listings.
     # Defaults to `()`, all types.
     string[]? includeExtensions = ();
+|};
+
+# Existing Azure Files connector clients, supplied in place of a `files:ConnectionConfig`
+# so the loader reuses the caller's connections rather than opening its own. Clients
+# supplied this way are **not** owned by the loader: the caller remains responsible for
+# their lifecycle.
+#
+# Two clients are needed because the connector splits the API: `FileClient` lists
+# directories and downloads files, while `ManagementClient` is used only to enumerate the
+# account's shares for a `share: "*"` source.
+public type Clients record {|
+    # The client used to list directories and download files.
+    files:FileClient fileClient;
+    # The client used only to enumerate shares for a `share: "*"` source. It may be omitted
+    # when no source uses `"*"`, mirroring the loader's own lazy construction of it.
+    files:ManagementClient managementClient?;
 |};
 
 // A normalized listing entry, decoupled from the connector's `File` record (whose
