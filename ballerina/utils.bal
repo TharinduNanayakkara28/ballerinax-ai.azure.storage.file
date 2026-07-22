@@ -79,15 +79,17 @@ isolated function extractText(byte[] content, string fileName) returns string|er
     name: "extractText"
 } external;
 
-// The sentinel phrase the native extractor embeds when a PDF parses successfully but has
-// no text layer — a scanned / image-only document (mirrors TextExtractor.SCANNED_PDF_MESSAGE).
-const string SCANNED_PDF_SENTINEL = "no extractable text layer";
+// The sentinel phrase the native extractor embeds when a PDF parses successfully but
+// yields no text — either a scanned/image-only document or a born-blank one (mirrors
+// TextExtractor.SCANNED_PDF_MESSAGE / BLANK_PDF_MESSAGE, which both contain this phrase).
+const string TEXTLESS_PDF_SENTINEL = "no extractable text";
 
-// Reports whether an error denotes a scanned (image-only) PDF. The loader uses this to
-// skip such files in directory listings (with a warning) — like other non-text content —
-// while an explicitly named scanned PDF surfaces the descriptive error to the caller.
-isolated function isScannedPdfError(error err) returns boolean =>
-    err.message().includes(SCANNED_PDF_SENTINEL);
+// Reports whether an error denotes a text-less PDF (scanned/image-only or blank). The
+// loader uses this to skip such files in directory listings (with a warning) — like other
+// non-text content — while an explicitly named text-less PDF surfaces the descriptive,
+// case-specific error to the caller.
+isolated function isTextlessPdfError(error err) returns boolean =>
+    err.message().includes(TEXTLESS_PDF_SENTINEL);
 
 // Classifies a file by how its text is obtained, using MIME type then extension.
 isolated function classify(string fileName, string? mimeType) returns DocumentKind {

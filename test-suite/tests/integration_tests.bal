@@ -202,9 +202,9 @@ function testSinglePagePdfExtracts() returns error? {
 
 @test:Config {groups: ["integration"]}
 function testNamedScannedPdfIsAnError() {
-    // A scanned (image-only) PDF named explicitly surfaces a descriptive error —
-    // never a silent empty document. OCR is not supported.
-    assertIsError(load(["/pdfs/scanned.pdf"]), "no extractable text layer");
+    // A text-less PDF (scanned/image-only or blank) named explicitly surfaces a
+    // descriptive error — never a silent empty document. OCR is not supported.
+    assertIsError(load(["/pdfs/scanned.pdf"]), "no extractable text content");
 }
 
 @test:Config {groups: ["integration"]}

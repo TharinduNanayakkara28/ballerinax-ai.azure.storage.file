@@ -123,7 +123,7 @@ isolated function testExtractTextFromPdfBytes() returns error? {
     test:assertTrue(text.includes(PDF_TEXT), text);
 }
 
-// ---- scanned (image-only) PDF detection ---------------------------------------
+// ---- text-less PDF detection (scanned/image-only or blank) --------------------
 
 @test:Config {}
 isolated function testExtractTextFromScannedPdfErrors() {
@@ -131,9 +131,20 @@ isolated function testExtractTextFromScannedPdfErrors() {
     // a descriptive error rather than silently returning an empty string.
     string|error text = extractText(SCANNED_PDF_BYTES, "scan.pdf");
     if text is error {
-        test:assertTrue(text.message().includes(SCANNED_PDF_SENTINEL), text.message());
+        test:assertTrue(text.message().includes(TEXTLESS_PDF_SENTINEL), text.message());
     } else {
         test:assertFail("A scanned (image-only) PDF should surface a descriptive error");
+    }
+}
+
+@test:Config {}
+isolated function testExtractTextFromBlankPdfErrors() {
+    // A genuinely blank PDF (no text, no images) gets the same neutral message.
+    string|error text = extractText(BLANK_PDF_BYTES, "blank.pdf");
+    if text is error {
+        test:assertTrue(text.message().includes(TEXTLESS_PDF_SENTINEL), text.message());
+    } else {
+        test:assertFail("A blank PDF should surface a descriptive error");
     }
 }
 
@@ -142,17 +153,17 @@ isolated function testBuildDocumentScannedPdfErrors() {
     ai:TextDocument?|ai:Error result = buildDocument(SCANNED_PDF_BYTES, "scan.pdf",
             "application/pdf", (), (), ());
     if result is ai:Error {
-        test:assertTrue(result.message().includes(SCANNED_PDF_SENTINEL), result.message());
-        test:assertTrue(isScannedPdfError(result), "The error must be recognisable as scanned-PDF");
+        test:assertTrue(result.message().includes(TEXTLESS_PDF_SENTINEL), result.message());
+        test:assertTrue(isTextlessPdfError(result), "The error must be recognisable as text-less PDF");
     } else {
         test:assertFail("Building a document from a scanned PDF should error, not skip or succeed");
     }
 }
 
 @test:Config {}
-isolated function testIsScannedPdfErrorRejectsOtherErrors() {
-    test:assertFalse(isScannedPdfError(error("some unrelated extraction failure")));
-    test:assertFalse(isScannedPdfError(error("Failed to decode text content")));
+isolated function testIsTextlessPdfErrorRejectsOtherErrors() {
+    test:assertFalse(isTextlessPdfError(error("some unrelated extraction failure")));
+    test:assertFalse(isTextlessPdfError(error("Failed to decode text content")));
 }
 
 @test:Config {}

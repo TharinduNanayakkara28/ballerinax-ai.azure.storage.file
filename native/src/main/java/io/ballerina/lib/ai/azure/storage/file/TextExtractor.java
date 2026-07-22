@@ -68,16 +68,17 @@ public final class TextExtractor {
     private static final int UNLIMITED_CONTENT_SIZE = -1;
 
     /**
-     * The error message returned for a PDF whose pages carry no text layer (a scanned /
-     * image-only document). PDFBox extracts only the text layer, so such a PDF parses
-     * "successfully" but yields empty text — silently producing an empty document unless
-     * detected here. The Ballerina layer matches this message (see {@code isScannedPdfError}
-     * in {@code utils.bal}) to skip such files in directory listings while surfacing a
-     * descriptive error for explicitly named paths.
+     * The error message returned for a PDF that parses successfully but yields no text —
+     * either a scanned/image-only document or a genuinely blank one. PDFBox extracts only
+     * the text layer, so without this check such a PDF would silently produce an EMPTY
+     * document. One neutral message covers both cases (the loader cannot know which it is
+     * without OCR). The Ballerina layer matches the {@code "no extractable text"} phrase
+     * (see {@code isTextlessPdfError} in {@code utils.bal}) to skip such files in directory
+     * listings while surfacing this error for explicitly named paths.
      */
-    static final String SCANNED_PDF_MESSAGE =
-            "the PDF has no extractable text layer (it appears to be a scanned/image-only "
-                    + "document), and OCR is not supported";
+    static final String TEXTLESS_PDF_MESSAGE =
+            "the PDF contains no extractable text content (it may be a scanned/image-only "
+                    + "document or an empty one); OCR is not supported";
 
     private TextExtractor() {
     }
@@ -105,11 +106,11 @@ public final class TextExtractor {
             context.set(PDFParserConfig.class, pdfConfig);
             parser.parse(stream, handler, metadata, context);
             String text = handler.toString();
-            // A PDF that parses but yields no text has image-only pages (a scan): PDFBox
-            // reads only the text layer, so surface a descriptive error instead of
-            // silently returning an empty document.
+            // A PDF that parses but yields no text is either a scan (pages are images) or a
+            // genuinely blank document: PDFBox reads only the text layer, so surface a
+            // descriptive error instead of silently returning an empty document.
             if (parser instanceof PDFParser && text.trim().isEmpty()) {
-                return ErrorCreator.createError(StringUtils.fromString(SCANNED_PDF_MESSAGE));
+                return ErrorCreator.createError(StringUtils.fromString(TEXTLESS_PDF_MESSAGE));
             }
             return StringUtils.fromString(text);
         } catch (Exception e) {

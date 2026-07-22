@@ -160,12 +160,12 @@ public isolated class TextDataLoader {
             }
             ai:TextDocument?|ai:Error document = self.toDocument(share, entry);
             if document is ai:Error {
-                // A scanned (image-only) PDF has no text to extract; inside a listing it is
-                // skipped like other non-text content rather than aborting the whole walk.
-                // (An explicitly named scanned PDF still surfaces this error to the caller.)
-                if isScannedPdfError(document) {
-                    log:printWarn("Skipping a scanned (image-only) PDF: it has no extractable " +
-                            "text layer, and OCR is not supported",
+                // A text-less PDF (scanned/image-only or blank) has no text to extract;
+                // inside a listing it is skipped like other non-text content rather than
+                // aborting the whole walk. (An explicitly named one still surfaces the
+                // descriptive error to the caller.)
+                if isTextlessPdfError(document) {
+                    log:printWarn("Skipping a PDF with no extractable text content",
                             fileName = entry.name, directory = directoryPath, share = share);
                     continue;
                 }
